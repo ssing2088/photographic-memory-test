@@ -2,7 +2,7 @@
 
 Test and improve your memory with our scientifically-inspired number memory game. Challenge yourself through progressive levels of increasing difficulty and discover your true memory potential.
 
-## 🎯 Game Features
+## 🎯 Memory Test Game Features
 
 - **Progressive Challenge**: Start with single digits and advance to 20-digit numbers
 - **Quick Recall**: 5-second memorization window per level
@@ -10,7 +10,7 @@ Test and improve your memory with our scientifically-inspired number memory game
 - **Instant Feedback**: Track your progress with visual indicators
 - **Score System**: Earn 5 points per level, aim for the high score
 
-## 🏆 Achievement Levels
+## 🏆 Memory Test Achievement Levels
 
 | Score Range | Achievement |
 |-------------|------------|
@@ -27,7 +27,7 @@ Test and improve your memory with our scientifically-inspired number memory game
 - Strengthen mental agility
 - Build confidence in your memory abilities
 
-## 🎮 How to Play
+## 🎮 How to Play Memory Test
 
 1. Observe the number displayed on screen
 2. Remember it within 5 seconds
@@ -35,7 +35,7 @@ Test and improve your memory with our scientifically-inspired number memory game
 4. Progress to longer numbers with each success
 5. One mistake ends the game - challenge yourself to beat your high score!
 
-## 🌐 Try It Now
+## 🌐 Try Memory Test Now
 
 Visit [MemoryTest.io](https://memorytest.io) to start your memory training journey!
 
@@ -47,7 +47,7 @@ For the best experience, please use:
 - Tablets
 - Screens larger than 7 inches
 
-## 🌟 User Testimonials
+## 🌟 Memory Test User Testimonials
 
 > "Challenging and addictive! Great way to improve memory skills." - Sarah M.
 
@@ -70,4 +70,4 @@ For the best experience, please use:
 
 ---
 
-### Ready to test your memory? [Start Training Now](https://memorytest.io)
+### Ready to test your memory? [Start Memory Test Now](https://memorytest.io)
