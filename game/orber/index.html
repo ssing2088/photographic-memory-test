@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orber - A Unique Number Path Puzzle Game | Connect Numbers in Sequence</title>
+    <meta name="description" content="Play Orber, an innovative puzzle game that challenges you to connect numbers in sequence. With progressive difficulty levels, intuitive controls, and brain-teasing challenges, it's perfect for puzzle enthusiasts of all ages. Test your logical thinking and pathfinding skills in this unique gaming experience.">
+    <style>
+    :root {
+        --primary: #4a90e2;
+        --primary-dark: #357abd;
+        --success: #4CAF50;
+        --error: #f44336;
+        --background: #f0f4f8;
+        --cell-bg: #ffffff;
+    }
+
+    body {
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        min-height: 100vh;
+        margin: 0;
+        background: linear-gradient(135deg, #f6f9fc 0%, var(--background) 100%);
+        color: #2c3e50;
+        padding: 20px;
+    }
+
+    .game-title {
+        font-size: 48px;
+        font-weight: 800;
+        text-align: center;
+        margin-bottom: 10px;
+        background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .game-intro {
+        color: #64748b;
+        text-align: center;
+        max-width: 600px;
+        margin: 0 auto 40px;
+        font-size: 16px;
+        line-height: 1.6;
+    }
+
+    .game-container {
+        background: rgba(255, 255, 255, 0.95);
+        padding: 30px;
+        border-radius: 24px;
+        box-shadow: 
+            0 10px 20px rgba(0,0,0,0.1),
+            0 6px 6px rgba(0,0,0,0.05),
+            0 0 100px rgba(74,144,226,0.1);
+        margin-bottom: 30px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+        position: relative;
+        max-width: fit-content;
+        margin: 0 auto 30px;
+    }
+
+    .game-grid {
+        display: grid;
+        gap: 12px;
+        padding: 10px;
+    }
+
+    .cell {
+        width: 70px;
+        height: 70px;
+        background: var(--cell-bg);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 
+            0 4px 6px rgba(0,0,0,0.05),
+            0 1px 3px rgba(0,0,0,0.1);
+        border: 2px solid transparent;
+        color: #2c3e50;
+    }
+
+    .cell:hover {
+        transform: translateY(-2px);
+        box-shadow: 
+            0 6px 8px rgba(0,0,0,0.1),
+            0 2px 4px rgba(0,0,0,0.06);
+    }
+
+    .cell.active {
+        background: linear-gradient(135deg, #90caf9, #64b5f6);
+        color: white;
+        border-color: #64b5f6;
+    }
+
+    .cell.hint {
+        background: linear-gradient(135deg, #90caf9, #64b5f6);
+        color: white;
+        border-color: #64b5f6;
+    }
+
+    .cell.error {
+        background: linear-gradient(135deg, #ef5350, #e53935);
+        color: white;
+        border-color: #e53935;
+    }
+
+    .cell.correct {
+        background: linear-gradient(135deg, #81c784, #66bb6a);
+        color: white;
+        border-color: #66bb6a;
+    }
+
+    .level-display {
+        font-size: 24px;
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 20px;
+        color: #2c3e50;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .path-line {
+        position: absolute;
+        background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+        height: 6px;
+        border-radius: 3px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        opacity: 0.8;
+    }
+
+    button {
+        background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 30px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: block;
+        margin: 0 auto;
+    }
+
+    button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        background: linear-gradient(45deg, #357abd, #2c6ba9);
+    }
+
+    button:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .lines-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+    }
+
+    /* SEO Section Styles */
+    section {
+        max-width: 800px;
+        margin: 60px auto;
+        padding: 30px;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 24px;
+        box-shadow: 
+            0 4px 6px rgba(0,0,0,0.05),
+            0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    article {
+        margin-bottom: 40px;
+    }
+
+    h2 {
+        color: #2c3e50;
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        position: relative;
+        padding-bottom: 10px;
+    }
+
+    h2::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 60px;
+        height: 4px;
+        background: linear-gradient(45deg, var(--primary), var(--primary-dark));
+        border-radius: 2px;
+    }
+
+    ul {
+        list-style-type: none;
+        padding: 0;
+    }
+
+    ul li {
+        padding: 10px 0;
+        padding-left: 25px;
+        position: relative;
+    }
+
+    ul li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        width: 8px;
+        height: 8px;
+        background: var(--primary);
+        border-radius: 50%;
+        transform: translateY(-50%);
+    }
+
+    @media (max-width: 768px) {
+        .game-title {
+            font-size: 36px;
+        }
+        
+        .cell {
+            width: 60px;
+            height: 60px;
+            font-size: 24px;
+        }
+        
+        .game-container {
+            padding: 20px;
+        }
+        
+        section {
+            padding: 20px;
+            margin: 40px auto;
+        }
+    }
+    
+    .game-container {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        position: relative;
+    }
+    .game-grid {
+        display: grid;
+        gap: 10px;
+        touch-action: none;
+        user-select: none;
+        position: relative;
+        margin: 20px 0;
+    }
+    .cell {
+        width: 60px;
+        height: 60px;
+        background: #e0e0e0;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .cell.active {
+        background: #b3e0ff;
+    }
+    .cell.hint {
+        background: #b3e0ff;
+    }
+    .cell.error {
+        background: #ffb3b3;
+    }
+    .cell.correct {
+        background: #b3ffb3;
+    }
+    .lines-container {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1;
+    }
+    .path-line {
+        position: absolute;
+        background: #4a90e2;
+        height: 4px;
+        transform-origin: left center;
+        pointer-events: none;
+    }
+    button {
+        padding: 10px 20px;
+        font-size: 16px;
+        background: #4a90e2;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    button:hover {
+        background: #357abd;
+    }
+    h1 {
+        margin-bottom: 20px;
+    }
+    .level-display {
+        font-size: 18px;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+    </style>
+</head>
+<body>
+    <h1 class="game-title">Orber</h1>
+    <p class="game-intro">
+        Derived from "Order" and "Number", Orber is a puzzle game where you create paths by connecting numbers in sequence. Follow the hints and find your way through increasingly challenging levels. Each move matters as you can only connect adjacent squares.
+    </p>
+    <div class="level-display">
+        Level: <span id="currentLevel">1</span>
+    </div>
+    <div id="gameContainer" class="game-container">
+        <div id="gameGrid" class="game-grid"></div>
+        <div id="linesContainer" class="lines-container"></div>
+    </div>
+    <!--<button id="resetBtn">Reset Level</button>-->
+
+    <section class="mt-8 p-4 max-w-2xl mx-auto text-gray-700">
+        <article class="mb-8">
+            <h2 class="text-xl font-bold mb-4">What is Orber?</h2>
+            <p class="mb-4">
+                Orber is an innovative puzzle game that combines numerical sequences with pathfinding. The name "Orber" cleverly merges "Order" and "Number", reflecting the game's core mechanics where players must create ordered paths through a grid of numbers.
+            </p>
+            <p class="mb-4">
+                Perfect for puzzle enthusiasts and anyone looking to challenge their logical thinking, Orber offers a unique gaming experience that starts simple but gradually increases in complexity as you progress through its carefully designed levels.
+            </p>
+        </article>
+
+        <article class="mb-8">
+            <h2 class="text-xl font-bold mb-4">How to Play</h2>
+            <ul class="list-disc pl-5 mb-4">
+                <li class="mb-2">Start with a grid containing hint numbers</li>
+                <li class="mb-2">Connect adjacent squares in numerical order</li>
+                <li class="mb-2">Each number must be connected to its neighbors (no diagonal moves)</li>
+                <li class="mb-2">Complete the path by connecting all squares in the correct sequence</li>
+                <li class="mb-2">Use hint numbers as guides to solve each puzzle</li>
+            </ul>
+        </article>
+
+        <article class="mb-8">
+            <h2 class="text-xl font-bold mb-4">Key Features</h2>
+            <ul class="list-disc pl-5">
+                <li class="mb-2">Progressive difficulty across multiple levels</li>
+                <li class="mb-2">Intuitive touch and mouse controls</li>
+                <li class="mb-2">Visual feedback with color-coded paths</li>
+                <li class="mb-2">Audio cues for moves and completions</li>
+                <li class="mb-2">Brain-teasing puzzles suitable for all ages</li>
+            </ul>
+        </article>
+
+        <article>
+            <h2 class="text-xl font-bold mb-4">Why Play Orber?</h2>
+            <p class="mb-4">
+                Orber stands out in the puzzle game genre by combining simple rules with deep strategic gameplay. Each level presents a unique challenge that exercises your spatial reasoning and planning abilities. Whether you're a casual player or a puzzle game enthusiast, Orber offers an engaging experience that's easy to learn but satisfying to master.
+            </p>
+            <p class="mb-4">
+                The game's minimalist design focuses your attention on solving puzzles while providing clear visual feedback. With its gradual progression in difficulty, Orber keeps you engaged as you develop your problem-solving skills through increasingly complex challenges.
+            </p>
+        </article>
+    </section>
+
+    <script>
+        class SoundEffect {
+            constructor() {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            playClick() {
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+                
+                gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.1);
+                
+                oscillator.start();
+                oscillator.stop(this.audioContext.currentTime + 0.1);
+            }
+
+            playError() {
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(300, this.audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(200, this.audioContext.currentTime + 0.1);
+                
+                gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+                
+                oscillator.start();
+                oscillator.stop(this.audioContext.currentTime + 0.2);
+            }
+
+            playComplete() {
+                const notes = [400, 500, 600, 800];
+                notes.forEach((freq, index) => {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(freq, this.audioContext.currentTime + index * 0.1);
+                    
+                    gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime + index * 0.1);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + index * 0.1 + 0.1);
+                    
+                    oscillator.start(this.audioContext.currentTime + index * 0.1);
+                    oscillator.stop(this.audioContext.currentTime + index * 0.1 + 0.1);
+                });
+            }
+        }
+
+
+        class Game {
+            constructor() {
+                this.currentLevel = 1;
+                this.gridSize = 2;
+                this.cells = [];
+                this.solution = [];
+                this.hints = new Set();
+                this.path = [];
+                this.isDragging = false;
+                this.lastCell = null;
+                
+                this.gameContainer = document.getElementById('gameContainer');
+                this.gameGrid = document.getElementById('gameGrid');
+                this.linesContainer = document.getElementById('linesContainer');
+                //this.resetBtn = document.getElementById('resetBtn');
+                this.levelDisplay = document.getElementById('currentLevel');
+
+                this.sound = new SoundEffect();
+                
+                this.init();
+            }
+
+            init() {
+                // 绑定事件处理器到实例
+                this.handleStart = this.handleStart.bind(this);
+                this.handleMove = this.handleMove.bind(this);
+                this.handleEnd = this.handleEnd.bind(this);
+                this.setupEventListeners();
+                this.initLevel();
+            }
+
+            setupEventListeners() {
+                //this.resetBtn.addEventListener('click', () => this.initLevel());
+                
+                this.gameGrid.addEventListener('mousedown', this.handleStart);
+                document.addEventListener('mousemove', this.handleMove);
+                document.addEventListener('mouseup', this.handleEnd);
+                
+                this.gameGrid.addEventListener('touchstart', this.handleStart);
+                document.addEventListener('touchmove', this.handleMove);
+                document.addEventListener('touchend', this.handleEnd);
+            }
+
+            isAdjacent(index1, index2) {
+                const row1 = Math.floor(index1 / this.gridSize);
+                const col1 = index1 % this.gridSize;
+                const row2 = Math.floor(index2 / this.gridSize);
+                const col2 = index2 % this.gridSize;
+                return Math.abs(row1 - row2) + Math.abs(col1 - col2) === 1;
+            }
+
+            generateValidPath() {
+                const totalCells = this.gridSize * this.gridSize;
+                let attempts = 0;
+                let validPath = null;
+
+                while (!validPath && attempts < 100) {
+                    attempts++;
+                    let path = [Math.floor(Math.random() * totalCells)];
+                    let available = new Set();
+
+                    for (let i = 0; i < totalCells; i++) {
+                        if (i !== path[0]) available.add(i);
+                    }
+
+                    while (path.length < totalCells && available.size > 0) {
+                        const lastCell = path[path.length - 1];
+                        const validMoves = [...available].filter(next => this.isAdjacent(lastCell, next));
+
+                        if (validMoves.length === 0) break;
+
+                        const nextCell = validMoves[Math.floor(Math.random() * validMoves.length)];
+                        path.push(nextCell);
+                        available.delete(nextCell);
+                    }
+
+                    if (path.length === totalCells) {
+                        validPath = path;
+                    }
+                }
+
+                return validPath;
+            }
+
+            initLevel() {
+                this.gridSize = this.currentLevel <= 2 ? 2 : 
+                               this.currentLevel <= 6 ? 3 : 4;
+
+                // 生成有效路径
+                this.solution = this.generateValidPath();
+                if (!this.solution) {
+                    console.error("Could not generate valid path");
+                    return;
+                }
+
+                // 选择提示数字（排除1）
+                const totalCells = this.gridSize * this.gridSize;
+                const hintCount = Math.min(
+                    Math.floor(totalCells / 2),
+                    this.currentLevel <= 2 ? 1 : 
+                    this.currentLevel <= 6 ? Math.floor((this.currentLevel - 2) / 2) + 1 : 4
+                );
+
+                this.hints.clear();
+                while (this.hints.size < hintCount) {
+                    const position = Math.floor(Math.random() * (totalCells - 1)) + 2; // 排除1
+                    this.hints.add(position);
+                }
+
+                // 重置状态
+                this.path = [];
+                this.lastCell = null;
+                this.linesContainer.innerHTML = '';
+                
+                this.createGrid();
+            }
+
+            createGrid() {
+                this.gameGrid.innerHTML = '';
+                this.cells = [];
+                
+                this.gameGrid.style.gridTemplateColumns = `repeat(${this.gridSize}, 60px)`;
+
+                for (let i = 0; i < this.gridSize * this.gridSize; i++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.index = i;
+                    
+                    const solutionIndex = this.solution.indexOf(i);
+                    if (this.hints.has(solutionIndex + 1)) {
+                        cell.textContent = (solutionIndex + 1).toString();
+                        cell.classList.add('active');
+                    }
+                    
+                    this.gameGrid.appendChild(cell);
+                    this.cells.push(cell);
+                }
+            }
+
+            handleStart(e) {
+                e.preventDefault();
+                const cell = this.getCellFromEvent(e);
+                if (!cell) return;
+
+                this.isDragging = true;
+                this.path = [];
+                this.linesContainer.innerHTML = '';
+                this.addToPath(cell);
+            }
+
+            handleMove(e) {
+                if (!this.isDragging) return;
+                e.preventDefault();
+                
+                const cell = this.getCellFromEvent(e);
+                if (!cell || cell === this.lastCell) return;
+
+                if (this.isValidNextCell(cell)) {
+                    this.addToPath(cell);
+                }
+            }
+
+            handleEnd() {
+                this.isDragging = false;
+                
+                if (this.isLevelComplete()) {
+                    this.sound.playComplete(); // 完成音效
+                    setTimeout(() => {
+                        this.currentLevel++;
+                        this.levelDisplay.textContent = this.currentLevel;
+                        this.initLevel();
+                    }, 500); // 延长等待时间，让完成音效播放完
+                }
+            }
+
+            getCellFromEvent(e) {
+                const point = e.touches ? e.touches[0] : e;
+                const element = document.elementFromPoint(point.clientX, point.clientY);
+                if (element && element.classList.contains('cell')) {
+                    return element;
+                }
+                return null;
+            }
+
+            isValidNextCell(cell) {
+                if (!this.lastCell) return true;
+                
+                const lastIndex = parseInt(this.lastCell.dataset.index);
+                const currentIndex = parseInt(cell.dataset.index);
+                
+                return this.isAdjacent(lastIndex, currentIndex);
+            }
+
+            addToPath(cell) {
+                const index = parseInt(cell.dataset.index);
+                if (!this.path.includes(index)) {
+                    this.path.push(index);
+                    this.lastCell = cell;
+                    
+                    const solutionIndex = this.solution.indexOf(index);
+                    const pathIndex = this.path.length - 1;
+                    
+                    // 播放相应的音效
+                    if (this.hints.has(solutionIndex + 1)) {
+                        if (pathIndex === solutionIndex) {
+                            this.sound.playClick(); // 正确位置
+                        } else {
+                            this.sound.playError(); // 错误位置
+                        }
+                    } else {
+                        this.sound.playClick(); // 普通移动
+                    }
+                    
+                    this.updateUI();
+                    this.drawPaths();
+                }
+            }
+
+            updateUI() {
+                const isComplete = this.isLevelComplete();
+                
+                this.cells.forEach((cell, index) => {
+                    const pathIndex = this.path.indexOf(index); // 用户路径中的位置
+                    const solutionIndex = this.solution.indexOf(index); // 解决方案中的位置
+                    
+                    // 重置所有类
+                    cell.classList.remove('active', 'hint', 'error', 'correct');
+                    
+                    if (this.hints.has(solutionIndex + 1)) {
+                        // 这是一个预设数字的格子
+                        cell.textContent = (solutionIndex + 1).toString();
+                        
+                        if (pathIndex !== -1) {
+                            // 用户已经连到这个格子
+                            if (pathIndex === solutionIndex) {
+                                // 位置正确
+                                cell.classList.add(isComplete ? 'correct' : 'hint');
+                            } else {
+                                // 位置错误
+                                cell.classList.add('error');
+                            }
+                        } else {
+                            // 还未连到这个格子
+                            cell.classList.add('hint');
+                        }
+                    } else {
+                        // 非预设数字的格子
+                        if (pathIndex !== -1) {
+                            // 用户已连到的格子
+                            cell.textContent = (pathIndex + 1).toString();
+                            cell.classList.add(isComplete ? 'correct' : 'active');
+                        } else {
+                            // 未连到的格子
+                            cell.textContent = '';
+                        }
+                    }
+                });
+            }
+
+            drawPaths() {
+                if (!this.gameContainer) return;
+                
+                this.linesContainer.innerHTML = '';
+                const containerRect = this.gameContainer.getBoundingClientRect();
+
+                for (let i = 0; i < this.path.length - 1; i++) {
+                    const startCell = this.cells[this.path[i]];
+                    const endCell = this.cells[this.path[i + 1]];
+                    
+                    if (!startCell || !endCell) continue;
+                    
+                    const start = startCell.getBoundingClientRect();
+                    const end = endCell.getBoundingClientRect();
+                    
+                    const line = document.createElement('div');
+                    line.className = 'path-line';
+                    
+                    const dx = end.left - start.left;
+                    const dy = end.top - start.top;
+                    const length = Math.sqrt(dx * dx + dy * dy);
+                    const angle = Math.atan2(dy, dx);
+                    
+                    line.style.width = `${length}px`;
+                    line.style.left = `${start.left - containerRect.left + start.width/2}px`;
+                    line.style.top = `${start.top - containerRect.top + start.height/2}px`;
+                    line.style.transform = `rotate(${angle}rad)`;
+                    
+                    this.linesContainer.appendChild(line);
+                }
+            }
+
+            isLevelComplete() {
+                // 检查是否所有格子都连上了
+                if (this.path.length !== this.gridSize * this.gridSize) return false;
+                
+                // 检查提示数字是否在正确的位置
+                for (const hintNumber of this.hints) {
+                    const requiredCellIndex = this.solution[hintNumber - 1];
+                    const playerPathIndex = this.path.indexOf(requiredCellIndex);
+                    if (playerPathIndex !== hintNumber - 1) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            }
+
+
+            isLevelComplete1() {
+                // 检查是否所有格子都连上了
+                if (this.path.length !== this.gridSize * this.gridSize) return false;
+                
+                // 检查提示数字是否在正确的位置
+                for (const hintNumber of this.hints) {
+                    // hintNumber 是这个格子应该在路径中的位置（第几步）
+                    // 需要找到在solution中对应这个数字的格子索引
+                    const requiredCellIndex = this.solution[hintNumber - 1];
+                    // 检查这个格子是否在玩家路径的正确位置
+                    const playerPathIndex = this.path.indexOf(requiredCellIndex);
+                    if (playerPathIndex !== hintNumber - 1) {
+                        return false;
+                    }
+                }
+                
+                // 所有检查都通过
+                return true;
+            }
+        }
+
+        // Start the game
+        window.onload = () => new Game();
+    </script>
+    <script defer data-domain="memorytest.io" src="https://click.pageview.click/js/script.js"></script>
+</body>
+</html>
