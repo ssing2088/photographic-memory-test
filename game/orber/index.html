@@ -330,6 +330,7 @@
         text-align: center;
     }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.0.0-alpha.12/html2canvas.min.js"></script>
 </head>
 <body>
     <h1 class="game-title">Orber</h1>
@@ -344,6 +345,9 @@
         <div id="linesContainer" class="lines-container"></div>
     </div>
     <!--<button id="resetBtn">Reset Level</button>-->
+
+    <div id="snapshotsContainer" style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px;"></div>
+
 
     <section class="mt-8 p-4 max-w-2xl mx-auto text-gray-700">
         <article class="mb-8">
@@ -503,6 +507,22 @@
                 return Math.abs(row1 - row2) + Math.abs(col1 - col2) === 1;
             }
 
+            captureSnapshot() {
+                html2canvas(this.gameContainer).then(canvas => {
+                    const imgData = canvas.toDataURL("image/png");
+                    const img = document.createElement('img');
+                    img.src = imgData;
+                    img.style.width = '100px'; // 可根据需要调整缩略图尺寸
+                    img.style.border = '2px solid #4a90e2';
+                    img.style.borderRadius = '8px';
+                    img.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                    
+                    const snapshotsContainer = document.getElementById('snapshotsContainer');
+                    snapshotsContainer.appendChild(img);
+                });
+            }
+
+
             generateValidPath() {
                 const totalCells = this.gridSize * this.gridSize;
                 let attempts = 0;
@@ -620,6 +640,7 @@
                 if (this.isLevelComplete()) {
                     this.sound.playComplete(); // 完成音效
                     setTimeout(() => {
+                        this.captureSnapshot(); // 截图当前关卡完成状态
                         this.currentLevel++;
                         this.levelDisplay.textContent = this.currentLevel;
                         this.initLevel();
