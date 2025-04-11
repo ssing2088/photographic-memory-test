@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Block Match Game</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        .game-container {
+            position: relative;
+            margin: 0 auto;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            background-color: #222;
+        }
+        
+        canvas {
+            display: block;
+        }
+        
+        .controls {
+            padding: 15px;
+            text-align: center;
+            background-color: #333;
+            color: white;
+        }
+        
+        .instructions {
+            margin-top: 20px;
+            max-width: 400px;
+            padding: 15px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .score {
+            font-size: 24px;
+            margin: 0;
+            color: #ffcc00;
+        }
+        
+        h1 {
+            margin: 0 0 10px 0;
+            font-size: 20px;
+        }
+        
+        .game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 10;
+        }
+        
+        .game-over h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .game-over button {
+            padding: 10px 20px;
+            background-color: #ffcc00;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="game-container">
+            <canvas id="gameCanvas"></canvas>
+            <div class="controls">
+                <h1>Color Block Match Game</h1>
+                <p class="score">Score: <span id="scoreValue">0</span></p>
+                <p class="score">High Score: <span id="highScoreValue">0</span></p>
+            </div>
+            <div id="gameOver" class="game-over">
+                <h2>Game Over!</h2>
+                <p>Final Score: <span id="finalScore">0</span></p>
+                <button id="restartButton">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game settings
+        const TILE_WIDTH = 120; // Width of each block
+        const TILE_HEIGHT = 160; // Height of each block
+        let GRID_ROWS = 3; // Number of rows
+        let GRID_COLS = 4; // Number of columns - will adjust automatically based on screen size
+        const BOARD_TOP = 20; // Top space for sticky effect
+        let CANVAS_WIDTH = TILE_WIDTH * GRID_COLS;
+        let CANVAS_HEIGHT = TILE_HEIGHT * GRID_ROWS + BOARD_TOP;
+        const COLORS = [
+            '#FF5252', // Red
+            '#FF9800', // Orange
+            '#eed500', // Yellow
+            '#4CAF50', // Green
+            '#2196F3', // Blue
+            '#673AB7', // Purple
+            '#E91E63', // Pink
+            '#00BCD4'  // Cyan
+        ];
+        
+        // Get Canvas context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Game state
+        let score = 0;
+        let highScore = localStorage.getItem('highScore') || 0;
+        let grid = [];
+        let isAnimating = false;
+        let isDragging = false;
+        let dragType = null; // 'row' or 'col'
+        let dragIndex = -1;
+        let dragStartPos = 0;
+        let dragOffset = 0;
+
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let initialRow = -1;
+        let initialCol = -1;
+        
+        // Audio context
+        let audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Note frequencies (for creating musical feel)
+        const rowNotes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25]; // C4 to C5 scale
+        const colNotes = [523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77, 1046.50]; // C5 to C6 scale
+        
+        // Adjust canvas size to fit screen
+        function resizeCanvas() {
+            // Get window dimensions
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
+            
+            // Determine grid size - automatically adjust based on screen size
+            const maxCols = Math.floor(windowWidth / TILE_WIDTH);
+            const maxRows = Math.floor((windowHeight - 150) / TILE_HEIGHT); // Subtract space for UI elements
+            
+            // Ensure at least 2x2 grid
+            GRID_COLS = Math.max(2, maxCols);
+            GRID_ROWS = Math.max(2, maxRows);
+            
+            // Update canvas dimensions
+            canvas.width = TILE_WIDTH * GRID_COLS;
+            canvas.height = TILE_HEIGHT * GRID_ROWS + BOARD_TOP;
+            
+            // Update global variables
+            CANVAS_WIDTH = canvas.width;
+            CANVAS_HEIGHT = canvas.height;
+            
+            // Adjust game container size
+            document.querySelector('.game-container').style.width = canvas.width + 'px';
+        }
+        
+        // Initialize game
+        function initGame() {
+            // Adjust canvas size
+            resizeCanvas();
+            
+            // Reset score
+            score = 0;
+            updateScore();
+            
+            // Create grid
+            grid = [];
+            
+            // Fill grid with initial tiles (all with number 2)
+            for (let row = 0; row < GRID_ROWS; row++) {
+                grid[row] = [];
+                for (let col = 0; col < GRID_COLS; col++) {
+                    grid[row][col] = {
+                        colorIndex: Math.floor(Math.random() * COLORS.length),
+                        number: 2,
+                        isEmpty: false
+                    };
+                }
+            }
+            
+            // Draw initial state
+            drawGrid();
+            
+            // Add event listeners
+            setupEventListeners();
+        }
+            
+        
+        // Randomly shuffle grid
+        function shuffle() {
+            for (let row = 0; row < GRID_ROWS; row++) {
+                for (let col = 0; col < GRID_COLS; col++) {
+                    if (!grid[row][col].isEmpty) {
+                        grid[row][col].colorIndex = Math.floor(Math.random() * COLORS.length);
+                    }
+                }
+            }
+        }
+        
+        // Draw grid
+        function drawGrid() {
+            // Clear canvas
+            ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            // Draw background
+            ctx.fillStyle = '#222';
+            ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            
+            // Draw normal grid (excluding dragged row/column)
+            for (let row = 0; row < GRID_ROWS; row++) {
+                for (let col = 0; col < GRID_COLS; col++) {
+                    // Skip dragged row/column
+                    if ((dragType === 'row' && row === dragIndex) || 
+                        (dragType === 'col' && col === dragIndex)) {
+                        continue;
+                    }
+                    
+                    drawTile(row, col);
+                }
+            }
+            
+            // Draw dragged row/column with wrap-around effect
+            if (isDragging) {
+                if (dragType === 'row') {
+                    // Draw the dragged row
+                    for (let col = 0; col < GRID_COLS; col++) {
+                        const x = col * TILE_WIDTH + dragOffset;
+                        
+                        // Draw main tile
+                        drawTileAt(dragIndex, col, x, dragIndex * TILE_HEIGHT + BOARD_TOP);
+                        
+                        // Draw wrap-around tiles
+                        if (x < 0) {
+                            // Tile moving out to the left, show it on the right
+                            drawTileAt(dragIndex, col, x + GRID_COLS * TILE_WIDTH, dragIndex * TILE_HEIGHT + BOARD_TOP);
+                        } else if (x + TILE_WIDTH > CANVAS_WIDTH) {
+                            // Tile moving out to the right, show it on the left
+                            drawTileAt(dragIndex, col, x - GRID_COLS * TILE_WIDTH, dragIndex * TILE_HEIGHT + BOARD_TOP);
+                        }
+                    }
+                } else if (dragType === 'col') {
+                    // Draw the dragged column
+                    for (let row = 0; row < GRID_ROWS; row++) {
+                        const y = row * TILE_HEIGHT + BOARD_TOP + dragOffset;
+                        
+                        // Draw main tile
+                        drawTileAt(row, dragIndex, dragIndex * TILE_WIDTH, y);
+                        
+                        // Draw wrap-around tiles
+                        if (y < BOARD_TOP) {
+                            // Tile moving out to the top, show it at the bottom
+                            drawTileAt(row, dragIndex, dragIndex * TILE_WIDTH, y + GRID_ROWS * TILE_HEIGHT);
+                        } else if (y + TILE_HEIGHT > CANVAS_HEIGHT) {
+                            // Tile moving out to the bottom, show it at the top
+                            drawTileAt(row, dragIndex, dragIndex * TILE_WIDTH, y - GRID_ROWS * TILE_HEIGHT);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Draw tile at specific position
+        function drawTile(row, col) {
+            const x = col * TILE_WIDTH;
+            const y = row * TILE_HEIGHT + BOARD_TOP;
+            drawTileAt(row, col, x, y);
+        }
+        
+        // Draw tile at specified coordinates
+        function drawTileAt(row, col, x, y) {
+            const tile = grid[row][col];
+            
+            if (tile.isEmpty) {
+                // Draw empty tile
+                ctx.fillStyle = '#333';
+                ctx.fillRect(x + 2, y + 2, TILE_WIDTH - 4, TILE_HEIGHT - 4);
+                
+                // Draw grid lines
+                ctx.strokeStyle = '#444';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x + 2, y + 2, TILE_WIDTH - 4, TILE_HEIGHT - 4);
+            } else {
+                // Draw colored tile
+                ctx.fillStyle = COLORS[tile.colorIndex];
+                ctx.fillRect(x + 2, y + 2, TILE_WIDTH - 4, TILE_HEIGHT - 4);
+                
+                // Draw highlight effect
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.beginPath();
+                ctx.moveTo(x + 2, y + 2);
+                ctx.lineTo(x + TILE_WIDTH - 2, y + 2);
+                ctx.lineTo(x + TILE_WIDTH - 10, y + 10);
+                ctx.lineTo(x + 10, y + 10);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Draw border
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(x + 2, y + 2, TILE_WIDTH - 4, TILE_HEIGHT - 4);
+                
+                // Draw number
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 48px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(tile.number.toString(), x + TILE_WIDTH/2, y + TILE_HEIGHT/2);
+            }
+        }
+        
+        // Set up event listeners
+        function setupEventListeners() {
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd);
+            
+            // Restart button
+            document.getElementById('restartButton').addEventListener('click', function() {
+                document.getElementById('gameOver').style.display = 'none';
+                initGame();
+            });
+        }
+        
+        // Handle mouse down event
+        function handleMouseDown(e) {
+            if (isAnimating) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            startDrag(x, y);
+        }
+        
+        // Handle touch start event
+        function handleTouchStart(e) {
+            e.preventDefault();
+            if (isAnimating) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0];
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            
+            startDrag(x, y);
+        }
+        
+        // Start dragging
+        function startDrag(x, y) {
+            // Calculate grid position
+            const col = Math.floor(x / TILE_WIDTH);
+            const row = Math.floor((y - BOARD_TOP) / TILE_HEIGHT);
+            
+            // Check if within grid bounds
+            if (row >= 0 && row < GRID_ROWS && col >= 0 && col < GRID_COLS) {
+                isDragging = true;
+                
+                // Record initial coordinates for drag direction determination
+                dragStartX = x;
+                dragStartY = y;
+                
+                // Drag type not determined yet, will be set on first movement
+                dragType = null;
+                dragIndex = -1;
+                dragOffset = 0;
+                
+                // Record initial clicked row and column for later use
+                initialRow = row;
+                initialCol = col;
+            }
+        }
+
+        
+        // Handle mouse move event
+        function handleMouseMove(e) {
+            if (isDragging) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                updateDrag(x, y);
+            }
+        }
+        
+        // Handle touch move event
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (isDragging) {
+                const rect = canvas.getBoundingClientRect();
+                const touch = e.touches[0];
+                const x = touch.clientX - rect.left;
+                const y = touch.clientY - rect.top;
+                
+                updateDrag(x, y);
+            }
+        }
+        
+        // Update drag state
+        function updateDrag(x, y) {
+            if (!isDragging) return;
+            
+            // Calculate movement distance from drag start point
+            const deltaX = x - dragStartX;
+            const deltaY = y - dragStartY;
+            
+            // If drag type not determined yet, determine based on movement direction
+            if (dragType === null) {
+                // Need to move beyond a certain distance to determine direction (reduce accidental touches)
+                if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                    // Horizontal movement greater than vertical, determine as row drag
+                    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                        dragType = 'row';
+                        dragIndex = initialRow;
+                        dragStartPos = dragStartX;
+                    } else {
+                        // Otherwise determine as column drag
+                        dragType = 'col';
+                        dragIndex = initialCol;
+                        dragStartPos = dragStartY;
+                    }
+                } else {
+                    // Movement distance insufficient, direction not determined yet, no action
+                    return;
+                }
+            }
+            
+            // Update offset based on drag type
+            if (dragType === 'row') {
+                // Row movement - use x coordinate difference from start position
+                dragOffset = x - dragStartPos;
+                
+                // Sticky effect - snap when close to grid points
+                const cellOffset = dragOffset % TILE_WIDTH;
+                if (Math.abs(cellOffset) < TILE_WIDTH / 5) {
+                    dragOffset = dragOffset - cellOffset;
+                } else if (Math.abs(cellOffset) > TILE_WIDTH - TILE_WIDTH / 5) {
+                    dragOffset = dragOffset + (TILE_WIDTH - Math.abs(cellOffset)) * Math.sign(cellOffset);
+                }
+                
+                // Limit drag range
+                if (dragOffset > TILE_WIDTH * GRID_COLS) {
+                    dragOffset = TILE_WIDTH * GRID_COLS;
+                } else if (dragOffset < -TILE_WIDTH * GRID_COLS) {
+                    dragOffset = -TILE_WIDTH * GRID_COLS;
+                }
+                
+                // Play sound based on grid movement
+                const currentCell = Math.round(dragOffset / TILE_WIDTH);
+                if (currentCell !== lastPlayedCell) {
+                    playRowMovementSound(dragIndex, currentCell);
+                    lastPlayedCell = currentCell;
+                }
+            } else if (dragType === 'col') {
+                // Column movement - use y coordinate difference from start position
+                dragOffset = y - dragStartPos;
+                
+                // Sticky effect
+                const cellOffset = dragOffset % TILE_HEIGHT;
+                if (Math.abs(cellOffset) < TILE_HEIGHT / 5) {
+                    dragOffset = dragOffset - cellOffset;
+                } else if (Math.abs(cellOffset) > TILE_HEIGHT - TILE_HEIGHT / 5) {
+                    dragOffset = dragOffset + (TILE_HEIGHT - Math.abs(cellOffset)) * Math.sign(cellOffset);
+                }
+                
+                // Limit drag range
+                if (dragOffset > TILE_HEIGHT * GRID_ROWS) {
+                    dragOffset = TILE_HEIGHT * GRID_ROWS;
+                } else if (dragOffset < -TILE_HEIGHT * GRID_ROWS) {
+                    dragOffset = -TILE_HEIGHT * GRID_ROWS;
+                }
+                
+                // Play sound based on grid movement
+                const currentCell = Math.round(dragOffset / TILE_HEIGHT);
+                if (currentCell !== lastPlayedCell) {
+                    playColumnMovementSound(dragIndex, currentCell);
+                    lastPlayedCell = currentCell;
+                }
+            }
+            
+            // Redraw grid to reflect drag state
+            drawGrid();
+        }
+        
+        let lastPlayedCell = 0;
+        
+        // Play row movement sound
+        function playRowMovementSound(row, offset) {
+            if (offset === 0) return; // Don't play sound at initial position
+            
+            // Select note based on row and offset
+            const noteIndex = (row + Math.abs(offset)) % rowNotes.length;
+            const frequency = rowNotes[noteIndex];
+            
+            // Create tone
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            // Set tone type and frequency
+            oscillator.type = 'sine';
+            oscillator.frequency.value = frequency;
+            
+            // Set volume and decay
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+            
+            // Connect nodes
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Play and stop
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.3);
+        }
+        
+        // Play column movement sound
+        function playColumnMovementSound(col, offset) {
+            if (offset === 0) return;
+            
+            // Use different tone range
+            const noteIndex = (col + Math.abs(offset)) % colNotes.length;
+            const frequency = colNotes[noteIndex];
+            
+            // Create tone
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            // Set tone type and frequency
+            oscillator.type = 'triangle'; // Use triangle wave to differentiate from row movement's sine wave
+            oscillator.frequency.value = frequency;
+            
+            // Set volume and decay
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.25);
+            
+            // Connect nodes
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Play and stop
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.25);
+        }
+        
+        // Play match sound
+        function playMatchSound(matchCount) {
+            // Create tone
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            // Set different frequencies based on match count
+            oscillator.type = 'sine';
+            
+            // Create note sequence
+            const baseFreq = 440 + matchCount * 50;
+            const noteSequence = [baseFreq, baseFreq * 1.2, baseFreq * 1.5];
+            
+            // Set volume
+            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+            
+            // Connect nodes
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // Play note sequence
+            oscillator.frequency.setValueAtTime(noteSequence[0], audioContext.currentTime);
+            oscillator.frequency.setValueAtTime(noteSequence[1], audioContext.currentTime + 0.1);
+            oscillator.frequency.setValueAtTime(noteSequence[2], audioContext.currentTime + 0.2);
+            
+            // Control volume envelope
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
+            gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.15);
+            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.25);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
+            
+            // Play and stop
+            oscillator.start();
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+        
+        // Handle mouse up event
+        function handleMouseUp() {
+            if (isDragging) {
+                endDrag();
+            }
+        }
+        
+        // Handle touch end event
+        function handleTouchEnd() {
+            if (isDragging) {
+                endDrag();
+            }
+        }
+        
+        // End drag
+        function endDrag() {
+            if (!isDragging) return;
+            
+            // If drag type determined and there's movement
+            if (dragType !== null) {
+                // Calculate grid movement amount
+                let gridMovement = 0;
+                
+                if (dragType === 'row') {
+                    gridMovement = Math.round(dragOffset / TILE_WIDTH);
+                } else if (dragType === 'col') {
+                    gridMovement = Math.round(dragOffset / TILE_HEIGHT);
+                }
+                
+                if (gridMovement !== 0) {
+                    // Actually perform grid movement
+                    if (dragType === 'row') {
+                        shiftRow(dragIndex, gridMovement);
+                    } else if (dragType === 'col') {
+                        shiftColumn(dragIndex, gridMovement);
+                    }
+                    
+                    // Check for matches and process
+                    processMatches();
+                }
+            }
+            
+            // Reset drag state
+            isDragging = false;
+            dragType = null;
+            dragIndex = -1;
+            dragOffset = 0;
+            dragStartX = 0;
+            dragStartY = 0;
+            initialRow = -1;
+            initialCol = -1;
+            lastPlayedCell = 0;
+            
+            // Redraw grid
+            drawGrid();
+        }
+        
+        // Shift row
+        function shiftRow(row, amount) {
+            // Circular shift, ensure always within grid bounds
+            amount = ((amount % GRID_COLS) + GRID_COLS) % GRID_COLS;
+            
+            if (amount === 0) return;
+            
+            // Save current row
+            const currentRow = grid[row].slice();
+            
+            // Move row elements
+            for (let col = 0; col < GRID_COLS; col++) {
+                const newCol = (col + amount) % GRID_COLS;
+                grid[row][newCol] = currentRow[col];
+            }
+        }
+        
+        // Shift column
+        function shiftColumn(col, amount) {
+            // Circular shift, ensure always within grid bounds
+            amount = ((amount % GRID_ROWS) + GRID_ROWS) % GRID_ROWS;
+            
+            if (amount === 0) return;
+            
+            // Save current column
+            const currentCol = [];
+            for (let row = 0; row < GRID_ROWS; row++) {
+                currentCol.push(grid[row][col]);
+            }
+            
+            // Move column elements
+            for (let row = 0; row < GRID_ROWS; row++) {
+                const newRow = (row + amount) % GRID_ROWS;
+                grid[newRow][col] = currentCol[row];
+            }
+        }
+        
+        // Check if there are any possible moves that can create matches
+        function hasPossibleMoves() {
+            // First check if there are enough blocks
+            let remainingBlocks = 0;
+            for (let row = 0; row < GRID_ROWS; row++) {
+                for (let col = 0; col < GRID_COLS; col++) {
+                    if (!grid[row][col].isEmpty) {
+                        remainingBlocks++;
+                    }
+                }
+            }
+            
+            // If less than 3 blocks remain, no possible moves
+            if (remainingBlocks < 3) {
+                return false;
+            }
+            
+            // Check possible row moves
+            for (let row = 0; row < GRID_ROWS; row++) {
+                for (let col = 0; col < GRID_COLS; col++) {
+                    if (!grid[row][col].isEmpty) {
+                        const color = grid[row][col].colorIndex;
+                        
+                        // Check if moving this row can create a match
+                        for (let targetCol = 0; targetCol < GRID_COLS; targetCol++) {
+                            if (targetCol === col) continue;
+                            
+                            // Count same color blocks in target column
+                            let sameColorCount = 0;
+                            for (let r = 0; r < GRID_ROWS; r++) {
+                                if (!grid[r][targetCol].isEmpty && grid[r][targetCol].colorIndex === color) {
+                                    sameColorCount++;
+                                }
+                            }
+                            
+                            // If we can create a match by moving this block
+                            if (sameColorCount >= 2) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Check possible column moves
+            for (let col = 0; col < GRID_COLS; col++) {
+                for (let row = 0; row < GRID_ROWS; row++) {
+                    if (!grid[row][col].isEmpty) {
+                        const color = grid[row][col].colorIndex;
+                        
+                        // Check if moving this column can create a match
+                        for (let targetRow = 0; targetRow < GRID_ROWS; targetRow++) {
+                            if (targetRow === row) continue;
+                            
+                            // Count same color blocks in target row
+                            let sameColorCount = 0;
+                            for (let c = 0; c < GRID_COLS; c++) {
+                                if (!grid[targetRow][c].isEmpty && grid[targetRow][c].colorIndex === color) {
+                                    sameColorCount++;
+                                }
+                            }
+                            
+                            // If we can create a match by moving this block
+                            if (sameColorCount >= 2) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return false;
+        }
+
+        // Check if game is over
+        function isGameOver() {
+            // If no possible moves that can create matches, game over
+            return !hasPossibleMoves();
+        }
+
+        // Process matches
+        function processMatches() {
+            isAnimating = true;
+            
+            // Find matches
+            const matches = checkForMatches();
+            
+            if (matches.length > 0) {
+                // Play match sound
+                playMatchSound(matches.length);
+                
+                // Calculate score based on match size and numbers
+                let totalScore = 0;
+                for (const match of matches) {
+                    const baseNumber = grid[match[0].row][match[0].col].number;
+                    const matchLength = match.length;
+                    
+                    // Calculate score based on match length and number
+                    let matchScore = baseNumber * (matchLength - 2) * 10;
+                    totalScore += matchScore;
+                    
+                    // Calculate new number after merge
+                    const multiplier = matchLength - 2; // 3 cards = 1x, 4 cards = 2x, 5 cards = 3x
+                    const newNumber = baseNumber * (1 << multiplier); // Multiply by 2^multiplier
+                    
+                    // Find the middle position of the match
+                    let middleRow = 0;
+                    let middleCol = 0;
+                    
+                    // Calculate middle position
+                    if (match[0].row === match[1].row) {
+                        // Horizontal match
+                        middleRow = match[0].row;
+                        middleCol = Math.floor((match[0].col + match[match.length-1].col) / 2);
+                    } else {
+                        // Vertical match
+                        middleRow = Math.floor((match[0].row + match[match.length-1].row) / 2);
+                        middleCol = match[0].col;
+                    }
+                    
+                    // Store the color of the merged tiles
+                    const mergedColor = grid[match[0].row][match[0].col].colorIndex;
+                    
+                    // Remove all matched blocks
+                    for (const pos of match) {
+                        grid[pos.row][pos.col].isEmpty = true;
+                    }
+                    
+                    // Create new merged tile at middle position
+                    grid[middleRow][middleCol] = {
+                        colorIndex: mergedColor,
+                        number: newNumber,
+                        isEmpty: false
+                    };
+                    
+                    // Fill empty spaces with new tiles, excluding the merged color and ensuring smaller numbers
+                    fillEmptySpaces(mergedColor, newNumber);
+                }
+                
+                // Add score
+                score += totalScore;
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('highScore', highScore);
+                }
+                
+                // Update score display
+                updateScore();
+                
+                // Redraw grid
+                drawGrid();
+                
+                // Delay check for game over
+                setTimeout(() => {
+                    isAnimating = false;
+                    
+                    // Check if game is over
+                    if (isGameOver()) {
+                        gameOver();
+                    }
+                }, 500);
+            } else {
+                isAnimating = false;
+            }
+        }
+        
+        // Fill empty spaces with new tiles
+        function fillEmptySpaces(excludeColor = null, mergedNumber = null) {
+            // Collect all empty positions
+            const emptyPositions = [];
+            for (let row = 0; row < GRID_ROWS; row++) {
+                for (let col = 0; col < GRID_COLS; col++) {
+                    if (grid[row][col].isEmpty) {
+                        emptyPositions.push({ row, col });
+                    }
+                }
+            }
+            
+            // If no empty positions, return
+            if (emptyPositions.length === 0) return;
+            
+            // Shuffle empty positions
+            for (let i = emptyPositions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [emptyPositions[i], emptyPositions[j]] = [emptyPositions[j], emptyPositions[i]];
+            }
+            
+            // Get all possible colors and numbers from existing tiles
+            const possibleColors = new Set();
+            const possibleNumbers = new Set();
+            
+            for (let row = 0; row < GRID_ROWS; row++) {
+                for (let col = 0; col < GRID_COLS; col++) {
+                    if (!grid[row][col].isEmpty) {
+                        possibleColors.add(grid[row][col].colorIndex);
+                        // Only add numbers that are smaller than the merged number
+                        if (mergedNumber === null || grid[row][col].number < mergedNumber) {
+                            possibleNumbers.add(grid[row][col].number);
+                        }
+                    }
+                }
+            }
+            
+            // If we need to exclude a color, remove it from possible colors
+            if (excludeColor !== null) {
+                possibleColors.delete(excludeColor);
+            }
+            
+            // If no colors available, add all colors back
+            if (possibleColors.size === 0) {
+                for (let i = 0; i < COLORS.length; i++) {
+                    if (i !== excludeColor) {
+                        possibleColors.add(i);
+                    }
+                }
+            }
+            
+            // If no numbers available, add 2 as the default number
+            if (possibleNumbers.size === 0) {
+                possibleNumbers.add(2);
+            }
+            
+            // Fill empty positions with new tiles
+            for (const pos of emptyPositions) {
+                // Choose a color and number that can potentially form matches
+                const colorIndex = Array.from(possibleColors)[Math.floor(Math.random() * possibleColors.size)];
+                const number = Array.from(possibleNumbers)[Math.floor(Math.random() * possibleNumbers.size)];
+                
+                grid[pos.row][pos.col] = {
+                    colorIndex,
+                    number,
+                    isEmpty: false
+                };
+            }
+        }
+        
+        // Check for matches
+        function checkForMatches() {
+            const matches = [];
+            
+            // Check horizontal matches
+            for (let row = 0; row < GRID_ROWS; row++) {
+                let startCol = 0;
+                while (startCol < GRID_COLS - 2) {
+                    if (grid[row][startCol].isEmpty) {
+                        startCol++;
+                        continue;
+                    }
+                    
+                    const colorIndex = grid[row][startCol].colorIndex;
+                    const number = grid[row][startCol].number;
+                    let matchLength = 1;
+                    
+                    // Calculate match length
+                    for (let col = startCol + 1; col < GRID_COLS; col++) {
+                        if (!grid[row][col].isEmpty && 
+                            grid[row][col].colorIndex === colorIndex && 
+                            grid[row][col].number === number) {
+                            matchLength++;
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    // If 3 or more matches
+                    if (matchLength >= 3) {
+                        const match = [];
+                        for (let i = 0; i < matchLength; i++) {
+                            match.push({ row, col: startCol + i });
+                        }
+                        matches.push(match);
+                        startCol += matchLength;
+                    } else {
+                        startCol++;
+                    }
+                }
+            }
+            
+            // Check vertical matches
+            for (let col = 0; col < GRID_COLS; col++) {
+                let startRow = 0;
+                while (startRow < GRID_ROWS - 2) {
+                    if (grid[startRow][col].isEmpty) {
+                        startRow++;
+                        continue;
+                    }
+                    
+                    const colorIndex = grid[startRow][col].colorIndex;
+                    const number = grid[startRow][col].number;
+                    let matchLength = 1;
+                    
+                    // Calculate match length
+                    for (let row = startRow + 1; row < GRID_ROWS; row++) {
+                        if (!grid[row][col].isEmpty && 
+                            grid[row][col].colorIndex === colorIndex && 
+                            grid[row][col].number === number) {
+                            matchLength++;
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    // If 3 or more matches
+                    if (matchLength >= 3) {
+                        const match = [];
+                        for (let i = 0; i < matchLength; i++) {
+                            match.push({ row: startRow + i, col });
+                        }
+                        matches.push(match);
+                        startRow += matchLength;
+                    } else {
+                        startRow++;
+                    }
+                }
+            }
+            
+            return matches;
+        }
+        
+        // Update score display
+        function updateScore() {
+            document.getElementById('scoreValue').textContent = score;
+            document.getElementById('highScoreValue').textContent = highScore;
+        }
+        
+        // Game over
+        function gameOver() {
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOver').style.display = 'flex';
+        }
+        
+        // Handle browser window resize
+        window.addEventListener('resize', function() {
+            // Readjust canvas size
+            resizeCanvas();
+            // Reinitialize game
+            initGame();
+        });
+        
+        // Initialize game after page load
+        window.addEventListener('load', function() {
+            // Get audio context
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                console.error('Web Audio API not supported:', e);
+            }
+            
+            // Initialize game
+            initGame();
+        });
+    </script>
+</body>
+</html>
