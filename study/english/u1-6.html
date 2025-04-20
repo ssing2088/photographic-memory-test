@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>U1‑U6 Review – Click & Listen</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --c-bg:#f9fafb;
+    --c-card:#fff;
+    --c-primary:#2563eb;
+    --c-text:#111827;
+    --c-sub:#6b7280;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;background:var(--c-bg);color:var(--c-text);line-height:1.55;padding:2rem;}
+  h1{font-size:2rem;font-weight:600;margin-bottom:1rem;}
+  h2{margin:2rem 0 1rem;font-size:1.5rem;color:var(--c-primary);}
+  ul{list-style:none;display:grid;gap:.75rem;}
+  li{
+      background:var(--c-card);
+      border:2px solid transparent;        /* 边框用于高亮 */
+      border-radius:1rem;
+      padding:1rem 1.25rem;
+      box-shadow:0 2px 4px rgb(0 0 0 / .05);
+      cursor:pointer;
+      transition:transform .1s ease,box-shadow .1s ease,border-color .15s ease;
+  }
+  li:hover{transform:translateY(-2px);box-shadow:0 4px 8px rgb(0 0 0 / .08);} 
+  li:active{transform:translateY(0);}
+  li.playing{                               /* 正在播放时的高亮效果 */
+      border-color:var(--c-primary);
+      box-shadow:0 0 0 3px rgb(37 99 235 / .3);
+  }
+  .sub{color:var(--c-sub);font-size:.9rem;margin-top:.25rem;display:inline-block;}
+</style>
+</head>
+<body>
+
+<h1>U1‑U6 复习 – 点击句子即可朗读</h1>
+
+<!-- U1 -->
+<h2>U1. Look and see – What do you see?</h2>
+<ul id="u1">
+<li>I see a frog. It’s green. It’s fat. It can swim.</li>
+<li>I see a rabbit. It can jump. It’s white. It’s thin.</li>
+<li>I see a bee. It can dance. It’s yellow.</li>
+<li>I see a bird. It’s big. It can fly.</li>
+<li>I see an ant.</li>
+<li>I see a ladybird.</li>
+<li>I see a dragonfly.</li>
+<li>I see a butterfly.</li>
+<li>I see a chick.</li>
+<li>I see a duck.</li>
+<li>I see a cow.</li>
+<li>I see a pig.</li>
+</ul>
+
+<!-- U2 -->
+<h2>U2. Listen and hear – What do you hear?</h2>
+<ul id="u2">
+<li>I hear a sheep.</li>
+<li>I hear a hen.</li>
+<li>I hear a dog.</li>
+<li>I hear a cat.</li>
+<li>I hear a horse.</li>
+<li>I hear a donkey.</li>
+<li>I hear a rooster.</li>
+<li>I hear a tiger.</li>
+<li>I hear a monkey.</li>
+<li>I hear a panda.</li>
+</ul>
+
+<!-- U3 -->
+<h2>U3. Taste and smell</h2>
+<ul id="u3">
+<li>Smell the rice. It’s nice.</li>
+<li>Smell the apples.</li>
+<li>Smell the eggs.</li>
+<li>Smell the noodles.</li>
+<li>Taste the soup. It’s yummy.</li>
+<li>Taste the peaches.</li>
+<li>Taste the oranges.</li>
+<li>Taste the pears.</li>
+</ul>
+
+<!-- U4 -->
+<h2>U4. Toys I like</h2>
+<ul id="u4">
+<li>I like balls.</li>
+<li>I like dolls.</li>
+<li>I like bicycles.</li>
+<li>I like kites.</li>
+<li>I like robots.</li>
+<li>I like model planes.</li>
+<li>I like skateboards.</li>
+<li>I like puzzles.</li>
+</ul>
+
+<!-- U5 -->
+<h2>U5. Food I like</h2>
+<ul id="u5">
+<li>Do you like jelly? <span class="sub">Yes, I like jelly.</span></li>
+<li>Do you like ice cream? <span class="sub">Yes, I like ice cream.</span></li>
+<li>Do you like sweets? <span class="sub">Yes, I like sweets.</span></li>
+<li>Do you like biscuits? <span class="sub">Yes, I like biscuits.</span></li>
+<li>Do you like pizzas? <span class="sub">Yes, I like pizzas.</span></li>
+<li>Do you like dim sum? <span class="sub">No, I don’t like dim sum.</span></li>
+<li>Do you like egg tarts? <span class="sub">No, I don’t like egg tarts.</span></li>
+<li>Do you like hamburgers? <span class="sub">No, I don’t like hamburgers.</span></li>
+<li>Let’s share.</li>
+<li>One for you and one for me.</li>
+</ul>
+
+<!-- U6 -->
+<h2>U6. Drinks I like – What do you like?</h2>
+<ul id="u6">
+<li>I like cola. It’s cold.</li>
+<li>I like juice. It’s sweet.</li>
+<li>I like milk. It’s yummy.</li>
+<li>I like water. It’s nice.</li>
+<li>I like tea.</li>
+<li>I like hot chocolate.</li>
+<li>I like lemonade.</li>
+<li>I like soda.</li>
+</ul>
+
+<script>
+let currentLi = null; // 记录当前播放的 <li>
+
+function buildUtterance(text){
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate  = text.length > 60 ? 0.95 : 1.05;  // 适当调整语速和音高
+  u.pitch = text.length > 60 ? 1.05 : 1.15;
+  u.volume = 0.95;
+  // 尝试挑选更自然的英文女声
+  const preferred = speechSynthesis.getVoices().find(v => /en.*(female|woman|US|UK)/i.test(v.name));
+  if (preferred) u.voice = preferred;
+  return u;
+}
+
+function speakSentence(li){
+  speechSynthesis.cancel();                 // 停止之前的朗读
+  if (currentLi) currentLi.classList.remove('playing'); // 去掉旧高亮
+
+  const utter = buildUtterance(li.textContent.trim());
+  currentLi = li;
+  li.classList.add('playing');              // 加上高亮边框
+
+  utter.onend = () => {
+    li.classList.remove('playing');
+    currentLi = null;
+  };
+  speechSynthesis.speak(utter);
+}
+
+document.querySelectorAll('li').forEach(li => {
+  li.addEventListener('click', () => speakSentence(li));
+});
+</script>
+</body>
+</html>
