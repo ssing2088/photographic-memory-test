@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number memory test game 记忆力锻炼游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .game-container {
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .progress-bar {
+            display: none;
+            width: 90%;
+            max-width: 800px;
+            margin-bottom: 30px;
+            display: grid;
+            grid-template-columns: repeat(20, 1fr);
+            gap: 5px;
+        }
+
+        .progress-item {
+            width: 100%;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .progress-item.current {
+            border-color: #ffd700;
+            background: rgba(255, 215, 0, 0.3);
+            animation: pulse 1s infinite;
+        }
+
+        .progress-item.correct {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .progress-item.wrong {
+            background: #f44336;
+            color: white;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .welcome-screen {
+            text-align: center;
+            max-width: 600px;
+        }
+
+        .game-title {
+            font-size: 3rem;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            background: linear-gradient(45deg, #ffd700, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .game-rules {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .game-rules h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #ffd700;
+        }
+
+        .game-rules ul {
+            text-align: left;
+            font-size: 1.1rem;
+            line-height: 1.8;
+        }
+
+        .game-rules li {
+            margin-bottom: 10px;
+        }
+
+        .start-btn, .submit-btn, .next-btn, .restart-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ffd700);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-weight: bold;
+        }
+
+        .start-btn:hover, .submit-btn:hover, .next-btn:hover, .restart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .game-screen {
+            display: none;
+            text-align: center;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .level-info {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #ffd700;
+        }
+
+        .number-display {
+            font-size: 4rem;
+            font-weight: bold;
+            margin: 40px 0;
+            min-height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            letter-spacing: 2px;
+        }
+
+        .countdown {
+            font-size: 3rem;
+            color: #ff6b6b;
+            font-weight: bold;
+            animation: countdown-pulse 1s infinite;
+        }
+
+        @keyframes countdown-pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .input-section {
+            margin: 30px 0;
+        }
+
+        .number-input {
+            padding: 15px 20px;
+            font-size: 1.5rem;
+            border: none;
+            border-radius: 10px;
+            text-align: center;
+            width: 300px;
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+        }
+
+        .result-message {
+            font-size: 1.3rem;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        .correct {
+            color: #4CAF50;
+        }
+
+        .wrong {
+            color: #ff6b6b;
+        }
+
+        .final-screen {
+            display: none;
+            text-align: center;
+            max-width: 600px;
+        }
+
+        .final-score {
+            font-size: 3rem;
+            color: #ffd700;
+            margin: 30px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .score-details {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .excellence-rating {
+            font-size: 1.5rem;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+
+        .excellent {
+            color: #ffd700;
+        }
+
+        .good {
+            color: #4CAF50;
+        }
+
+        .average {
+            color: #ff9800;
+        }
+
+        .below-average {
+            color: #ff6b6b;
+        }
+
+        @media (max-width: 768px) {
+            .game-title {
+                font-size: 2rem;
+            }
+            
+            .number-display {
+                font-size: 2.5rem;
+            }
+            
+            .number-input {
+                width: 250px;
+                font-size: 1.2rem;
+            }
+            
+            .progress-item {
+                height: 25px;
+                font-size: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 进度条 -->
+        <div class="progress-bar" id="progressBar">
+            <!-- 20个格子，通过JavaScript生成 -->
+        </div>
+
+        <!-- 欢迎界面 -->
+        <div class="welcome-screen" id="welcomeScreen">
+            <h1 class="game-title">记忆力锻炼游戏</h1>
+            <div class="game-rules">
+                <h3>游戏规则</h3>
+                <ul>
+                    <li>游戏共有20关，每关限时5秒</li>
+                    <li>第1关显示1位数，第2关显示2位数，依此类推到第20关的20位数</li>
+                    <li>在5秒倒计时内记住显示的数字</li>
+                    <li>倒计时结束后，输入你记住的数字</li>
+                    <li>答对得分：第1关5分，第2关10分，第20关100分</li>
+                    <li>总分1050分，840分以上为优秀</li>
+                </ul>
+            </div>
+            <button class="start-btn" onclick="startGame()">开始游戏</button>
+        </div>
+
+        <!-- 游戏界面 -->
+        <div class="game-screen" id="gameScreen">
+            <div class="level-info" id="levelInfo">第1关 - 1位数</div>
+            <div class="number-display" id="numberDisplay">准备开始...</div>
+            <div class="input-section" id="inputSection" style="display: none;">
+                <input type="text" class="number-input" id="numberInput" placeholder="请输入你记住的数字">
+                <br>
+                <button class="submit-btn" onclick="submitAnswer()">提交答案</button>
+            </div>
+            <div class="result-message" id="resultMessage"></div>
+            <button class="next-btn" id="nextBtn" style="display: none;" onclick="nextLevel()">下一关</button>
+        </div>
+
+        <!-- 结果界面 -->
+        <div class="final-screen" id="finalScreen">
+            <h2>游戏结束！</h2>
+            <div class="final-score" id="finalScore">总分：0分</div>
+            <div class="score-details">
+                <div id="correctCount">答对：0题</div>
+                <div id="wrongCount">答错：0题</div>
+                <div class="excellence-rating" id="excellenceRating"></div>
+            </div>
+            <button class="restart-btn" onclick="restartGame()">重新开始</button>
+        </div>
+    </div>
+
+    <script>
+        let currentLevel = 1;
+        let currentNumber = '';
+        let totalScore = 0;
+        let correctAnswers = 0;
+        let wrongAnswers = 0;
+        let gameResults = [];
+
+        // 初始化进度条
+        function initProgressBar() {
+            const progressBar = document.getElementById('progressBar');
+            progressBar.innerHTML = '';
+            for (let i = 1; i <= 20; i++) {
+                const item = document.createElement('div');
+                item.className = 'progress-item';
+                item.textContent = i;
+                item.id = `progress-${i}`;
+                progressBar.appendChild(item);
+            }
+        }
+
+        // 生成指定位数的随机数字
+        function generateRandomNumber(digits) {
+            let number = '';
+            for (let i = 0; i < digits; i++) {
+                if (i === 0) {
+                    // 第一位不能为0
+                    number += Math.floor(Math.random() * 9) + 1;
+                } else {
+                    number += Math.floor(Math.random() * 10);
+                }
+            }
+            return number;
+        }
+
+        // 开始游戏
+        function startGame() {
+            document.getElementById('welcomeScreen').style.display = 'none';
+            document.getElementById('gameScreen').style.display = 'flex';
+            document.getElementById('progressBar').style.display = 'grid';
+            
+            initProgressBar();
+            currentLevel = 1;
+            totalScore = 0;
+            correctAnswers = 0;
+            wrongAnswers = 0;
+            gameResults = [];
+            
+            startLevel();
+        }
+
+        // 开始某一关
+        function startLevel() {
+            // 更新进度条
+            document.querySelectorAll('.progress-item').forEach(item => {
+                item.classList.remove('current');
+            });
+            document.getElementById(`progress-${currentLevel}`).classList.add('current');
+
+            // 更新关卡信息
+            document.getElementById('levelInfo').textContent = `第${currentLevel}关 - ${currentLevel}位数`;
+            
+            // 生成随机数字
+            currentNumber = generateRandomNumber(currentLevel);
+            
+            // 显示数字
+            document.getElementById('numberDisplay').textContent = currentNumber;
+            document.getElementById('inputSection').style.display = 'none';
+            document.getElementById('resultMessage').textContent = '';
+            document.getElementById('nextBtn').style.display = 'none';
+            document.getElementById('numberInput').value = '';
+
+            // 开始倒计时
+            startCountdown();
+        }
+
+        // 倒计时
+        function startCountdown() {
+            let countdown = 5;
+            const numberDisplay = document.getElementById('numberDisplay');
+            
+            const timer = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    numberDisplay.innerHTML = `<div class="countdown">${countdown}</div>`;
+                } else {
+                    clearInterval(timer);
+                    // 隐藏数字，显示输入框
+                    numberDisplay.textContent = '请输入你记住的数字';
+                    document.getElementById('inputSection').style.display = 'block';
+                    document.getElementById('numberInput').focus();
+                }
+            }, 1000);
+        }
+
+        // 提交答案
+        function submitAnswer() {
+            const userInput = document.getElementById('numberInput').value.trim();
+            const resultMessage = document.getElementById('resultMessage');
+            const progressItem = document.getElementById(`progress-${currentLevel}`);
+            
+            if (userInput === '') {
+                alert('请输入数字！');
+                return;
+            }
+
+            const isCorrect = userInput === currentNumber;
+            const levelScore = currentLevel * 5;
+
+            if (isCorrect) {
+                correctAnswers++;
+                totalScore += levelScore;
+                resultMessage.innerHTML = `<span class="correct">✓ 答对了！得分：${levelScore}分</span>`;
+                progressItem.classList.add('correct');
+                progressItem.classList.remove('current');
+                gameResults.push({ level: currentLevel, correct: true, score: levelScore });
+            } else {
+                wrongAnswers++;
+                resultMessage.innerHTML = `<span class="wrong">✗ 答错了！正确答案是：${currentNumber}</span>`;
+                progressItem.classList.add('wrong');
+                progressItem.classList.remove('current');
+                gameResults.push({ level: currentLevel, correct: false, score: 0 });
+            }
+
+            document.getElementById('inputSection').style.display = 'none';
+
+            if (currentLevel < 20) {
+                document.getElementById('nextBtn').style.display = 'inline-block';
+            } else {
+                // 游戏结束
+                setTimeout(showFinalResults, 2000);
+            }
+        }
+
+        // 下一关
+        function nextLevel() {
+            currentLevel++;
+            startLevel();
+        }
+
+        // 显示最终结果
+        function showFinalResults() {
+            document.getElementById('gameScreen').style.display = 'none';
+            document.getElementById('finalScreen').style.display = 'block';
+            document.getElementById('progressBar').style.display = 'none';
+
+            document.getElementById('finalScore').textContent = `总分：${totalScore}分`;
+            document.getElementById('correctCount').textContent = `答对：${correctAnswers}题`;
+            document.getElementById('wrongCount').textContent = `答错：${wrongAnswers}题`;
+
+            // 评级
+            const excellenceRating = document.getElementById('excellenceRating');
+            if (totalScore >= 840) {
+                excellenceRating.textContent = '优秀！记忆力超群！';
+                excellenceRating.className = 'excellence-rating excellent';
+            } else if (totalScore >= 630) {
+                excellenceRating.textContent = '良好！继续加油！';
+                excellenceRating.className = 'excellence-rating good';
+            } else if (totalScore >= 420) {
+                excellenceRating.textContent = '一般，还有提升空间';
+                excellenceRating.className = 'excellence-rating average';
+            } else {
+                excellenceRating.textContent = '需要多加练习';
+                excellenceRating.className = 'excellence-rating below-average';
+            }
+        }
+
+        // 重新开始游戏
+        function restartGame() {
+            document.getElementById('finalScreen').style.display = 'none';
+            document.getElementById('welcomeScreen').style.display = 'block';
+        }
+
+        // 键盘事件
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                const inputSection = document.getElementById('inputSection');
+                const nextBtn = document.getElementById('nextBtn');
+                
+                if (inputSection.style.display !== 'none') {
+                    submitAnswer();
+                } else if (nextBtn.style.display !== 'none') {
+                    nextLevel();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
